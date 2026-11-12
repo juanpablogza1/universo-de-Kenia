@@ -1,8 +1,8 @@
-# El Universo de Kenia
+# El Universo
 
-Web app instalable para aprender del universo: 10 lecciones cortas (menos de 5 minutos), con animaciones y un reto de 3 preguntas al final de cada una.
+Web app instalable para aprender del universo: 20 lecciones cortas (menos de 5 minutos) en dos niveles, con animaciones interactivas y un reto de 3 preguntas al final de cada una.
 
-## Lecciones
+## Nivel 1 · Lo básico
 1. El Big Bang
 2. El Sistema Solar
 3. El Sol
@@ -14,13 +14,24 @@ Web app instalable para aprender del universo: 10 lecciones cortas (menos de 5 m
 9. Las galaxias
 10. La luz y las distancias
 
+## Nivel 2 · Explorando más
+11. Marte
+12. Júpiter y Saturno
+13. Cometas y meteoros
+14. Constelaciones
+15. Día, noche y mareas
+16. Exoplanetas
+17. La luz invisible
+18. Cohetes y satélites
+19. Lo invisible (materia y energía oscuras)
+20. ¿Qué tan grande es el universo?
+
 ## Publicar
-Settings → Pages → Source: *Deploy from a branch* → `main` / `(root)`.
-La app queda en `https://juanpablogza1.github.io/universo-de-Kenia/`. En el teléfono: abrir el enlace → "Agregar a pantalla de inicio".
+Settings → Pages → Source: *Deploy from a branch* → `main` / `(root)`. En el teléfono: abrir el enlace → "Agregar a pantalla de inicio".
 
 ## Archivos
 - `index.html`, `styles.css`: estructura y estilo
-- `lessons.js`: textos, datos y preguntas (editar aquí para agregar lecciones)
-- `anims.js`: animaciones en canvas
-- `app.js`: navegación, progreso (se guarda en el teléfono) y quiz
+- `lessons.js`: textos, controles y preguntas (editar aquí para agregar lecciones)
+- `anims.js`, `anims2.js`: animaciones en canvas (nivel 1 y nivel 2)
+- `app.js`: navegación, progreso (se guarda en el teléfono) y retos
 - `sw.js`, `manifest.json`, `icons/`: funcionamiento offline e instalación

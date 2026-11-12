@@ -1,7 +1,7 @@
-/* El Universo de Kenia — lógica de la app */
+/* El Universo — lógica de la app */
 (() => {
   const app = document.getElementById('app');
-  const KEY = 'universo-kenia-v1';
+  const KEY = 'el-universo-v1';
   const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } };
   const save = d => { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch (e) {} };
   let progress = load(); progress.done = progress.done || {};
@@ -36,8 +36,13 @@
   let cur = null; // {canvas, ctx, fn, s, opts, t0, w, h}
   function mountAnim(el, slide) {
     const canvas = document.createElement('canvas'); el.prepend(canvas);
-    cur = { canvas, ctx: canvas.getContext('2d'), fn: ANIMS[slide.anim], s: {}, opts: Object.assign({}, slide.opts || {}), t0: performance.now() };
-    (slide.controls || []).forEach(c => { cur.s[c.key] = c.type === 'range' ? c.value : (cur.opts[c.key] || c.options[0][0]); });
+    cur = { canvas, ctx: canvas.getContext('2d'), fn: ANIMS[slide.anim], s: { taps: [] }, opts: Object.assign({}, slide.opts || {}), t0: performance.now(), controls: slide.controls || [] };
+    cur.controls.forEach(c => { cur.s[c.key] = c.type === 'range' ? c.value : (cur.opts[c.key] || c.options[0][0]); });
+    canvas.addEventListener('pointerdown', e => {
+      const r = canvas.getBoundingClientRect();
+      cur.s.taps.push({ x: e.clientX - r.left, y: e.clientY - r.top, t: (performance.now() - cur.t0) / 1000 });
+      const hint = el.querySelector('.tap-hint'); if (hint) hint.remove();
+    });
     sizeAnim();
   }
   function sizeAnim() {
@@ -52,6 +57,13 @@
     if (cur && cur.fn && document.body.contains(cur.canvas)) {
       const c = cur.ctx; c.clearRect(0, 0, cur.w, cur.h);
       try { cur.fn(c, cur.w, cur.h, (now - cur.t0) / 1000, cur.s, cur.opts); } catch (e) { console.error(e); cur.fn = null; }
+      cur.controls.forEach(ct => {
+        if (ct.type !== 'range') return;
+        const inp = document.getElementById('c-' + ct.key), out = document.getElementById('v-' + ct.key); if (!inp) return;
+        if (ct.auto && !cur.s['_m' + ct.key]) inp.value = cur.s[ct.key];
+        const txt = cur.s[ct.key + '_txt'];
+        out.textContent = txt !== undefined ? txt : Math.round(cur.s[ct.key] * 10) / 10;
+      });
     }
     requestAnimationFrame(frame);
   }
@@ -64,8 +76,8 @@
     app.innerHTML = `
       <section class="hero">
         <div class="orbit-logo"><div class="ring"></div><div class="planet"></div><div class="moon"></div></div>
-        <h1>El Universo<br>de Kenia</h1>
-        <p>10 viajes cortos por el cosmos</p>
+        <h1>El Universo</h1>
+        <p>${LESSONS.length} viajes cortos por el cosmos</p>
       </section>
       <div class="progress-card">
         <div class="row"><span>${done} de ${LESSONS.length} lecciones</span><span>${totalStars} / ${LESSONS.length * 3} estrellas</span></div>
@@ -74,13 +86,15 @@
       <div class="lessons">
         ${LESSONS.map((l, i) => {
           const sc = progress.done[l.id];
-          return `<button class="lesson-card ${sc !== undefined ? 'done' : ''}" data-i="${i}" style="animation-delay:${i * 0.05}s">
+          const inter = l.slides.some(x => x.controls || x.tap);
+          const head = i === 0 ? '<h2 class="level-h">Nivel 1 · Lo básico</h2>' : i === 10 ? '<h2 class="level-h">Nivel 2 · Explorando más</h2>' : '';
+          return `${head}<button class="lesson-card ${sc !== undefined ? 'done' : ''}" data-i="${i}" style="animation-delay:${i * 0.05}s">
             <div class="orb" style="background:${l.orb}">${i + 1}</div>
             <div class="info"><h3>${l.title}</h3><p>${l.sub}</p></div>
-            <div class="meta"><span>${l.min} min</span>${sc !== undefined ? stars(sc) : ''}</div>
+            <div class="meta"><span>${l.min} min</span>${inter ? '<span class="tag">interactiva</span>' : ''}${sc !== undefined ? stars(sc) : ''}</div>
           </button>`;
         }).join('')}
-      </div>
+      </div>`;
     app.querySelectorAll('.lesson-card').forEach(b => b.onclick = () => openLesson(+b.dataset.i));
     scrollTo(0, 0);
   }
@@ -110,7 +124,7 @@
       <div class="slide ${dir < 0 ? 'back' : ''}">
         <div class="lesson-title">Lección ${L.index + 1} · ${L.title}</div>
         <h2>${sl.h}</h2>
-        <div class="stage" id="stage">${controlsHTML(sl)}</div>
+        <div class="stage" id="stage">${sl.tap ? '<div class="tap-hint">Toca la animación</div>' : ''}${controlsHTML(sl)}</div>
         <p class="text">${sl.t}</p>
         ${sl.fact ? `<div class="fact"><strong>Dato:</strong>${sl.fact}</div>` : ''}
       </div>
@@ -131,18 +145,19 @@
     if (!sl.controls) return '';
     return `<div class="controls">${sl.controls.map(c => c.type === 'range'
       ? `<label for="c-${c.key}">${c.label}</label><input id="c-${c.key}" type="range" min="${c.min}" max="${c.max}" step="${c.step}" value="${c.value}"><label id="v-${c.key}">${c.value}</label>`
-      : c.options.map(([v, n]) => `<button class="chip ${(sl.opts && sl.opts[c.key]) === v ? 'on' : ''}" data-k="${c.key}" data-v="${v}">${n}</button>`).join('')).join('')}</div>`;
+      : c.options.map(([v, n]) => `<button class="chip ${((sl.opts && sl.opts[c.key]) || c.options[0][0]) === v ? 'on' : ''}" data-k="${c.key}" data-v="${v}">${n}</button>`).join('')).join('')}</div>`;
   }
   function bindControls(sl) {
     (sl.controls || []).forEach(c => {
       if (c.type === 'range') {
         const inp = document.getElementById('c-' + c.key), out = document.getElementById('v-' + c.key);
-        inp.oninput = () => { cur.s[c.key] = +inp.value; out.textContent = inp.value; };
+        inp.oninput = () => { cur.s['_m' + c.key] = true; cur.s[c.key] = +inp.value; };
         ['touchstart', 'touchmove'].forEach(ev => inp.addEventListener(ev, e => e.stopPropagation(), { passive: true }));
       } else {
         app.querySelectorAll(`.chip[data-k="${c.key}"]`).forEach(b => b.onclick = () => {
           app.querySelectorAll(`.chip[data-k="${c.key}"]`).forEach(x => x.classList.toggle('on', x === b));
-          cur.s[c.key] = b.dataset.v; cur.t0 = performance.now();
+          cur.s[c.key] = b.dataset.v; cur.s['_m' + c.key] = true;
+          if (c.reset !== false) { cur.t0 = performance.now(); cur.s.taps = []; cur.s._tn = 0; }
         });
       }
     });

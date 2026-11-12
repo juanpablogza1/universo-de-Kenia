@@ -1,6 +1,6 @@
 {
-  "name": "El Universo de Kenia",
-  "short_name": "Universo Kenia",
+  "name": "El Universo",
+  "short_name": "El Universo",
   "description": "Aprende del universo con lecciones cortas y animadas.",
   "start_url": "./",
   "scope": "./",

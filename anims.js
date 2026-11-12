@@ -1,4 +1,4 @@
-/* Animaciones en canvas para El Universo de Kenia.
+/* Animaciones en canvas para El Universo.
    Cada animación: (ctx, w, h, t, s, opts) -> dibuja un cuadro.
    t = segundos desde que inició la diapositiva, s = estado persistente. */
 const TAU = Math.PI * 2;
@@ -82,6 +82,19 @@ function drawSpiral(ctx, pts, cx, cy, R, rot, tilt, alpha) {
 }
 
 const ANIMS = {};
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+/* Valor de un control: automático hasta que el usuario lo toca. */
+function ctl(s, key, auto) { if (!s['_m' + key]) s[key] = auto; return s[key]; }
+function newTaps(s) { const n = (s.taps || []).length, out = (s.taps || []).slice(s._tn || 0); s._tn = n; return out; }
+function lastTap(s) { return s.taps && s.taps.length ? s.taps[s.taps.length - 1] : null; }
+function wrapText(ctx, text, x, y, maxW, size, color, align, weight) {
+  ctx.font = `${weight || 700} ${size}px Nunito, system-ui, sans-serif`;
+  const words = text.split(' '), lines = []; let line = '';
+  words.forEach(wd => { const test = line ? line + ' ' + wd : wd; if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = wd; } else line = test; });
+  if (line) lines.push(line);
+  lines.forEach((l, i) => label(ctx, l, x, y + i * size * 1.3, size, color, align, weight));
+  return lines.length;
+}
 
 /* ---------- 1. Big Bang ---------- */
 ANIMS.bang = (ctx, w, h, t, s) => {
@@ -109,7 +122,8 @@ ANIMS.balloon = (ctx, w, h, t, s) => {
     const r = rnd(3);
     s.d = [{ x: -0.5, y: 0.15 }, { x: 0.45, y: -0.25 }, ...[...Array(12)].map(() => { const a = r() * TAU, m = Math.sqrt(r()) * 0.8; return { x: Math.cos(a) * m, y: Math.sin(a) * m }; })];
   }
-  const P = 6, p = (t % P) / P, sc = 0.35 + 0.65 * (1 - Math.pow(1 - Math.min(1, p / 0.85), 2));
+  const P = 6, ap = (t % P) / P, inf = ctl(s, 'inf', Math.round(100 * (1 - Math.pow(1 - Math.min(1, ap / 0.85), 2)))), sc = 0.35 + 0.65 * inf / 100, p = s._minf ? 0.5 : ap;
+  s.inf_txt = Math.round(inf) + '%';
   const cx = w / 2, cy = h * 0.47, R = Math.min(w, h) * 0.4 * sc, f = fs(w);
   ctx.globalAlpha = p > 0.93 ? 1 - (p - 0.93) / 0.07 : 1;
   const g = ctx.createRadialGradient(cx - R * 0.35, cy - R * 0.4, R * 0.05, cx, cy, R);
@@ -159,21 +173,22 @@ ANIMS.timeline = (ctx, w, h, t) => {
   glow(ctx, mx, y, 16, 'rgba(255,255,255,.9)');
 };
 
-ANIMS.redshift = (ctx, w, h, t) => {
-  const P = 7, p = t % P, c = w * 0.2, v = c * 0.45, x0 = w * 0.42, cy = h * 0.48, f = fs(w);
-  const sx = x0 + v * p;
+ANIMS.redshift = (ctx, w, h, t, s) => {
+  const away = (s.dir || 'lejos') === 'lejos';
+  const P = 7, p = t % P, c = w * 0.2, v = (away ? 1 : -1) * c * 0.42, x0 = away ? w * 0.42 : w * 0.9, cy = h * 0.48, f = fs(w);
+  const sx = x0 + v * p, cl = away ? '255,90,90' : '110,170,255', cr = away ? '110,170,255' : '255,90,90';
   for (let te = 0; te < p; te += 0.45) {
     const ex = x0 + v * te, r = c * (p - te), al = clamp(1 - r / (w * 0.85), 0, 1);
     ctx.lineWidth = 2.5;
-    ctx.strokeStyle = `rgba(255,90,90,${al})`; ctx.beginPath(); ctx.arc(ex, cy, r, Math.PI / 2, Math.PI * 1.5); ctx.stroke();
-    ctx.strokeStyle = `rgba(110,170,255,${al})`; ctx.beginPath(); ctx.arc(ex, cy, r, -Math.PI / 2, Math.PI / 2); ctx.stroke();
+    ctx.strokeStyle = `rgba(${cl},${al})`; ctx.beginPath(); ctx.arc(ex, cy, r, Math.PI / 2, Math.PI * 1.5); ctx.stroke();
+    ctx.strokeStyle = `rgba(${cr},${al})`; ctx.beginPath(); ctx.arc(ex, cy, r, -Math.PI / 2, Math.PI / 2); ctx.stroke();
   }
   glow(ctx, sx, cy, 18, 'rgba(255,240,200,1)', 'rgba(180,140,255,0)');
-  arrow(ctx, sx + 20, cy, sx + 50, cy, '#ffd166', 2.5);
+  if (away) arrow(ctx, sx + 20, cy, sx + 50, cy, '#ffd166', 2.5); else arrow(ctx, sx - 20, cy, sx - 50, cy, '#ffd166', 2.5);
   label(ctx, 'galaxia', sx, cy - 28, f * 0.9, '#fff');
   earth(ctx, w * 0.07, cy, 12);
   label(ctx, 'Tierra', w * 0.07, cy + 26, f * 0.85);
-  pill(ctx, 'Se aleja: su luz nos llega estirada y más roja', w / 2, h - f * 1.4, f * 0.9, '#ff8a8a');
+  pill(ctx, away ? 'Se aleja: su luz llega estirada y más roja' : 'Se acerca: su luz llega apretada y más azul', w / 2, h - f * 1.4, f * 0.9, away ? '#ff8a8a' : '#8fb4ff');
 };
 
 /* ---------- 2. Sistema Solar ---------- */
@@ -348,9 +363,10 @@ ANIMS.sunlayers = (ctx, w, h, t, s) => {
 };
 
 /* ---------- 4. Estaciones ---------- */
-ANIMS.seasons = (ctx, w, h, t) => {
+ANIMS.seasons = (ctx, w, h, t, s) => {
   const cx = w / 2, cy = h * 0.46, a = w * 0.36, b = h * 0.24, f = fs(w), P = 12;
-  const th = Math.PI + t * TAU / P, ex = cx + Math.cos(th) * a, ey = cy + Math.sin(th) * b;
+  const mes = ctl(s, 'mes', ((5 + t * 12 / P) % 12) + 1); s.mes_txt = MESES[(Math.round(mes) + 11) % 12];
+  const th = Math.PI + (mes - 6) / 12 * TAU, ex = cx + Math.cos(th) * a, ey = cy + Math.sin(th) * b;
   const re = Math.min(w, h) * 0.075 * (1 + Math.sin(th) * 0.18);
   ctx.strokeStyle = 'rgba(160,150,255,.3)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(cx, cy, a, b, 0, 0, TAU); ctx.stroke();
   const drawE = () => {
@@ -370,12 +386,13 @@ ANIMS.seasons = (ctx, w, h, t) => {
   if (Math.sin(th) >= 0) drawE();
   const c = Math.cos(th), sn = Math.sin(th);
   const lab = c < -0.7 ? ['Verano', 'junio', '#ffb347'] : c > 0.7 ? ['Invierno', 'diciembre', '#7fe3ff'] : sn < 0 ? ['Otoño', 'septiembre', '#ff8a5a'] : ['Primavera', 'marzo', '#3ee6a0'];
-  pill(ctx, `México: ${lab[0]} (${lab[1]})`, cx, h - f * 1.3, f * 0.95, lab[2]);
+  pill(ctx, `En México: ${lab[0]}`, cx, h - f * 1.3, f * 0.95, lab[2]);
   label(ctx, 'Eje inclinado 23.5°, siempre hacia el mismo lado', cx, f * 1.1, f * 0.75, '#aab0dd', 'center', 700);
 };
 
-ANIMS.tiltlight = (ctx, w, h, t) => {
-  const f = fs(w), gy = h * 0.74, cx = w / 2, a = (Math.sin(t * 0.8) * 0.5 + 0.5) * 1.15, W = w * 0.16, L = h * 0.62;
+ANIMS.tiltlight = (ctx, w, h, t, s) => {
+  const deg = ctl(s, 'ang', (Math.sin(t * 0.8) * 0.5 + 0.5) * 65); s.ang_txt = Math.round(deg) + '°';
+  const f = fs(w), gy = h * 0.74, cx = w / 2, a = deg * Math.PI / 180, W = w * 0.16, L = h * 0.62;
   const dx = Math.sin(a), dy = Math.cos(a), nx = Math.cos(a), ny = -Math.sin(a);
   const sx = cx - dx * L, sy = gy - dy * L, half = W / 2 / Math.cos(a);
   const bright = Math.cos(a);
@@ -419,8 +436,9 @@ function drawPhase(ctx, x, y, r, ph) {
   [[-0.3, -0.25, 0.18], [0.25, 0.2, 0.14], [-0.1, 0.4, 0.1], [0.35, -0.35, 0.08]].forEach(([a, b, c2]) => { ctx.beginPath(); ctx.arc(x + a * r, y + b * r, c2 * r, 0, TAU); ctx.fill(); });
 }
 const PHASES = ['Luna nueva', 'Creciente', 'Cuarto creciente', 'Gibosa creciente', 'Luna llena', 'Gibosa menguante', 'Cuarto menguante', 'Menguante'];
-ANIMS.moonphases = (ctx, w, h, t) => {
-  const f = fs(w), cx = w * 0.3, cy = h * 0.5, R = Math.min(w * 0.22, h * 0.36), P = 14, ph = (t * TAU / P) % TAU;
+ANIMS.moonphases = (ctx, w, h, t, s) => {
+  const P = 14, dia = ctl(s, 'dia', (t / P * 29.5) % 29.5), ph = (dia / 29.53 * TAU) % TAU; s.dia_txt = 'día ' + Math.round(dia);
+  const f = fs(w), cx = w * 0.3, cy = h * 0.5, R = Math.min(w * 0.22, h * 0.36);
   for (let i = 0; i < 4; i++) arrow(ctx, w * 0.6, h * (0.2 + i * 0.2), w * 0.53, h * (0.2 + i * 0.2), 'rgba(255,209,102,.6)', 1.5);
   label(ctx, 'luz del Sol', w * 0.565, h * 0.1, f * 0.7, '#ffd166');
   ctx.strokeStyle = 'rgba(160,150,255,.3)'; ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
@@ -453,8 +471,9 @@ ANIMS.tidallock = (ctx, w, h, t) => {
   pill(ctx, 'La marca rosa siempre mira a la Tierra', cx, h - f * 1.1, f * 0.85, '#ff7ad9');
 };
 
-ANIMS.eclipse = (ctx, w, h, t) => {
-  const f = fs(w), P = 10, p = (t % P) / P, cx = w / 2, cy = h * 0.46, r = Math.min(w, h) * 0.2;
+ANIMS.eclipse = (ctx, w, h, t, s) => {
+  const P = 10, p = ctl(s, 'pos', (t % P) / P * 100) / 100; s.pos_txt = '';
+  const f = fs(w), cx = w / 2, cy = h * 0.46, r = Math.min(w, h) * 0.2;
   const mx = lerp(-r * 1.4, w + r * 1.4, p), d = Math.abs(mx - cx), cover = clamp(1 - d / (2 * r), 0, 1);
   const dark = Math.pow(cover, 3);
   ctx.fillStyle = `rgb(${lerp(70, 8, dark)},${lerp(130, 8, dark)},${lerp(210, 34, dark)})`; ctx.fillRect(0, 0, w, h);
@@ -467,8 +486,9 @@ ANIMS.eclipse = (ctx, w, h, t) => {
 };
 
 /* ---------- 6. Gravedad ---------- */
-ANIMS.gravitywell = (ctx, w, h, t) => {
-  const f = fs(w), cx = w / 2, cy = h * 0.36, N = 16, depth = h * 0.42;
+ANIMS.gravitywell = (ctx, w, h, t, s) => {
+  const m = s.masa || 5; s.masa_txt = m;
+  const f = fs(w), cx = w / 2, cy = h * 0.36, N = 16, depth = h * 0.085 * m;
   const z = (x, y) => -1 / (1 + (x * x + y * y) / 0.035);
   const proj = (x, y) => [cx + x * w * 0.46 - y * w * 0.08, cy + y * h * 0.32 - z(x, y) * depth * 0.7];
   ctx.lineWidth = 1;
@@ -479,10 +499,10 @@ ANIMS.gravitywell = (ctx, w, h, t) => {
     ctx.strokeStyle = `rgba(139,108,255,${0.25 + 0.2 * (1 - Math.abs(u))})`;
     ctx.beginPath(); for (let j = 0; j <= 40; j++) { const v = -1 + j * 2 / 40; const [X, Y] = proj(v, u); j ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); } ctx.stroke();
   }
-  const [sx, sy] = proj(0, 0); sunBall(ctx, sx, sy - 10, Math.min(w, h) * 0.07);
-  const a = t * 1.4, ox = Math.cos(a) * 0.42, oy = Math.sin(a) * 0.42, [px, py] = proj(ox, oy);
+  const [sx, sy] = proj(0, 0); sunBall(ctx, sx, sy - 10, Math.min(w, h) * (0.03 + 0.008 * m));
+  const a = t * 0.63 * Math.sqrt(m), ox = Math.cos(a) * 0.42, oy = Math.sin(a) * 0.42, [px, py] = proj(ox, oy);
   earth(ctx, px, py - 6, Math.min(w, h) * 0.03, t * 0.5);
-  pill(ctx, 'Mucha masa = el espacio se curva más', cx, h - f * 1.1, f * 0.85);
+  pill(ctx, m > 6 ? 'Mucha masa: curva fuerte, la Tierra gira rápido' : m < 3 ? 'Poca masa: curva suave, gira lento' : 'Más masa = el espacio se curva más', cx, h - f * 1.1, f * 0.85);
 };
 
 ANIMS.cannon = (ctx, w, h, t, s) => {
@@ -511,11 +531,12 @@ ANIMS.cannon = (ctx, w, h, t, s) => {
   pill(ctx, msg, cx, f * 1.2, f * 0.85, val >= 6.5 && val < 7.5 ? '#3ee6a0' : '#ffd166');
 };
 
-ANIMS.jump = (ctx, w, h, t) => {
+ANIMS.jump = (ctx, w, h, t, s) => {
   const f = fs(w), cols = [['Luna', 0.165, '#b9b6aa', '16%'], ['Tierra', 1, '#3c8a50', '100%'], ['Júpiter', 2.53, '#c9905a', '253%']];
   const gy = h * 0.78, gE = 1.633 * h * 0.82, v = 0.35 * gE;
   cols.forEach(([n, gm, col, pct], i) => {
-    const x = w * (i + 0.5) / 3, g = gE * gm, T = 2 * v / g, cyc = T + 0.4, tt = (t % cyc);
+    const x = w * (i + 0.5) / 3, g = gE * gm, T = 2 * v / g, cyc = T + 0.4, lt = lastTap(s);
+    const tt = lt ? t - lt.t : t % cyc;
     const y = tt < T ? v * tt - g * tt * tt / 2 : 0;
     ctx.fillStyle = col; ctx.fillRect(w * i / 3 + 4, gy, w / 3 - 8, h - gy);
     const by = gy - y;
@@ -527,7 +548,7 @@ ANIMS.jump = (ctx, w, h, t) => {
     label(ctx, n, x, gy + (h - gy) * 0.35, f * 0.9, '#fff');
     label(ctx, `pesas ${pct}`, x, gy + (h - gy) * 0.72, f * 0.72, '#fff', 'center', 700);
   });
-  label(ctx, 'Mismo salto, distinta gravedad', w / 2, f * 1.1, f * 0.85, '#aab0dd');
+  label(ctx, lastTap(s) ? 'Mismo salto, distinta gravedad' : 'Toca para saltar', w / 2, f * 1.1, f * 0.85, '#aab0dd');
 };
 
 /* ---------- 7. Estrellas ---------- */
@@ -610,32 +631,34 @@ ANIMS.blackhole = (ctx, w, h, t, s) => {
   pill(ctx, 'Gas muy caliente girando a su alrededor', cx, h - f * 1.2, f * 0.85, '#ffb347');
 };
 
+function traceRay(b, cx, w, h, rh) {
+  const c = w * 0.5, k = c * c * rh * 1.15; let x = -cx, y = b, vx = c, vy = 0; const pts = []; let cap = false;
+  for (let n = 0; n < 900; n++) {
+    const dt = 0.004, d = Math.hypot(x, y), a = k / (d * d * d); vx -= x * a * dt; vy -= y * a * dt;
+    const sp = Math.hypot(vx, vy); vx = vx / sp * c; vy = vy / sp * c; x += vx * dt; y += vy * dt;
+    if (n % 3 === 0) pts.push([x, y]);
+    if (d < rh) { cap = true; break; } if (x > w || Math.abs(y) > h) break;
+  }
+  return { pts, cap };
+}
 ANIMS.raybend = (ctx, w, h, t, s) => {
   const f = fs(w), cx = w * 0.55, cy = h * 0.5, rh = Math.min(w, h) * 0.08;
-  if (!s.rays || s.w !== w) {
-    s.w = w; const c = w * 0.5, k = c * c * rh * 1.15; s.rays = [];
-    for (let i = 0; i < 11; i++) {
-      const b = (i - 5) * h * 0.075 + 0.5; let x = -cx, y = b, vx = c, vy = 0; const pts = []; let cap = false;
-      for (let n = 0; n < 900; n++) {
-        const dt = 0.004, d = Math.hypot(x, y), a = k / (d * d * d); vx -= x * a * dt; vy -= y * a * dt;
-        const sp = Math.hypot(vx, vy); vx = vx / sp * c; vy = vy / sp * c; x += vx * dt; y += vy * dt;
-        if (n % 3 === 0) pts.push([x, y]);
-        if (d < rh) { cap = true; break; } if (x > w || Math.abs(y) > h) break;
-      }
-      s.rays.push({ pts, cap });
-    }
-  }
-  const P = 5, p = (t % P) / 4;
-  s.rays.forEach(r => {
+  if (!s.rays || s.w !== w) { s.w = w; s.rays = []; for (let i = 0; i < 11; i++) s.rays.push(traceRay((i - 5) * h * 0.075 + 0.5, cx, w, h, rh)); s.extra = []; }
+  newTaps(s).forEach(tp => { const r = traceRay(tp.y - cy + 0.5, cx, w, h, rh); r.t0 = tp.t; s.extra.push(r); if (s.extra.length > 5) s.extra.shift(); });
+  const drawRay = (r, p, lw, bright) => {
     const n = Math.floor(clamp(p, 0, 1) * r.pts.length);
-    ctx.strokeStyle = r.cap ? 'rgba(255,107,127,.85)' : 'rgba(255,230,140,.8)'; ctx.lineWidth = 1.8; ctx.beginPath();
+    ctx.strokeStyle = r.cap ? `rgba(255,107,127,${bright ? 1 : 0.8})` : `rgba(255,230,140,${bright ? 1 : 0.75})`; ctx.lineWidth = lw; ctx.beginPath();
     for (let i = 0; i < n; i++) { const [x, y] = r.pts[i]; i ? ctx.lineTo(cx + x, cy + y) : ctx.moveTo(cx + x, cy + y); }
     ctx.stroke();
-    if (n > 0 && n < r.pts.length) { const [x, y] = r.pts[n - 1]; glow(ctx, cx + x, cy + y, 5, 'rgba(255,255,220,1)'); }
-  });
+    if (n > 0 && n < r.pts.length) { const [x, y] = r.pts[n - 1]; glow(ctx, cx + x, cy + y, bright ? 8 : 5, 'rgba(255,255,220,1)'); }
+  };
+  const P = 5, p = (t % P) / 4;
+  if (!s.extra.length) s.rays.forEach(r => drawRay(r, p, 1.8, false));
+  else s.rays.forEach(r => { ctx.globalAlpha = 0.25; drawRay(r, 1, 1.2, false); ctx.globalAlpha = 1; });
+  s.extra.forEach(r => drawRay(r, (t - r.t0) / 2.5, 3, true));
   glow(ctx, cx, cy, rh * 2, 'rgba(140,100,255,.35)'); circle(ctx, cx, cy, rh, '#000');
   ctx.strokeStyle = 'rgba(200,180,255,.7)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(cx, cy, rh, 0, TAU); ctx.stroke();
-  label(ctx, 'rayos de luz', w * 0.03, f * 1.1, f * 0.75, '#ffe68c', 'left');
+  label(ctx, 'Toca a la izquierda para lanzar luz', w * 0.03, f * 1.1, f * 0.75, '#ffe68c', 'left');
   pill(ctx, 'Rojo = la luz que ya no puede escapar', w / 2, h - f * 1.1, f * 0.85, '#ff8a9a');
 };
 
@@ -714,18 +737,28 @@ ANIMS.lightspeed = (ctx, w, h, t, s) => {
   label(ctx, '(en cámara lenta)', cx, h - f * 0.9, f * 0.72, '#aab0dd', 'center', 700);
 };
 
-ANIMS.lighttravel = (ctx, w, h, t) => {
-  const f = fs(w), P = 9, p = t % P, k = clamp(p / 7, 0, 1), sx = w * 0.1, ex = w * 0.9, cy = h * 0.5;
-  sunBall(ctx, sx, cy, Math.min(w, h) * 0.11); earth(ctx, ex, cy, Math.min(w, h) * 0.035, t * 0.2);
-  label(ctx, 'Sol', sx, cy + Math.min(w, h) * 0.2, f * 0.85, '#ffd166'); label(ctx, 'Tierra', ex, cy + Math.min(w, h) * 0.1, f * 0.85, '#7fc8ff');
+const DESTINOS = {
+  luna: ['Luna', '384,400 km', 1.3, '#e8e6da'], sol: ['Sol', '150 millones de km', 500, '#ffd166'],
+  marte: ['Marte', '225 millones de km (promedio)', 750, '#e0603c'], neptuno: ['Neptuno', '4,500 millones de km', 15000, '#4a6cff']
+};
+function fmtTime(sec) {
+  if (sec < 60) return sec.toFixed(1) + ' s';
+  if (sec < 3600) return Math.floor(sec / 60) + ' min ' + String(Math.round(sec % 60)).padStart(2, '0') + ' s';
+  return Math.floor(sec / 3600) + ' h ' + String(Math.round((sec % 3600) / 60)).padStart(2, '0') + ' min';
+}
+ANIMS.lighttravel = (ctx, w, h, t, s) => {
+  const D = DESTINOS[s.dest || 'sol'], f = fs(w), P = 9, p = t % P, k = clamp(p / 7, 0, 1), sx = w * 0.12, ex = w * 0.9, cy = h * 0.5, M = Math.min(w, h);
+  if ((s.dest || 'sol') === 'sol') sunBall(ctx, sx, cy, M * 0.11);
+  else { const r = M * 0.07, g = ctx.createRadialGradient(sx - r * 0.3, cy - r * 0.3, 0, sx, cy, r); g.addColorStop(0, '#fff'); g.addColorStop(0.35, D[3]); g.addColorStop(1, D[3]); circle(ctx, sx, cy, r, g); }
+  earth(ctx, ex, cy, M * 0.035, t * 0.2);
+  label(ctx, D[0], sx, cy + M * 0.2, f * 0.85, D[3]); label(ctx, 'Tierra', ex, cy + M * 0.1, f * 0.85, '#7fc8ff');
   ctx.setLineDash([2, 6]); ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.beginPath(); ctx.moveTo(sx, cy); ctx.lineTo(ex, cy); ctx.stroke(); ctx.setLineDash([]);
   const px = lerp(sx + 20, ex - 12, k);
   ctx.strokeStyle = 'rgba(255,240,150,.9)'; ctx.lineWidth = 2.5; ctx.beginPath();
-  for (let i = 0; i < 40; i++) { const x = px - i * 2.5, y = cy + Math.sin(i * 0.8 - t * 14) * 5; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+  for (let i = 0; i < 40; i++) { const x = Math.max(sx, px - i * 2.5), y = cy + Math.sin(i * 0.8 - t * 14) * 5; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
   ctx.stroke(); glow(ctx, px, cy, 9, 'rgba(255,255,220,1)');
-  const sec = Math.round(k * 500), mm = Math.floor(sec / 60), ss = String(sec % 60).padStart(2, '0');
-  pill(ctx, `${mm} min ${ss} s`, w / 2, f * 1.3, f * 1.05, '#ffd166');
-  pill(ctx, '150 millones de km', w / 2, h - f * 1.2, f * 0.85);
+  pill(ctx, fmtTime(k * D[2]), w / 2, f * 1.3, f * 1.05, '#ffd166');
+  pill(ctx, D[1], w / 2, h - f * 1.2, f * 0.85);
 };
 
 ANIMS.lookback = (ctx, w, h, t) => {

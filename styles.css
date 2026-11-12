@@ -51,7 +51,11 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .lesson-card .meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px;font-size:12px;color:var(--muted);font-weight:700}
 .stars{display:flex;gap:1px}
 .stars svg{width:14px;height:14px}
-.foot{text-align:center;color:var(--muted);font-size:12px;margin-top:20px;opacity:.7}
+.level-h{font-family:Fredoka;font-size:15px;font-weight:600;color:#c9bcff;text-transform:uppercase;letter-spacing:1.5px;margin:18px 4px 2px}
+.tag{font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:99px;background:rgba(63,208,255,.15);color:#7fe3ff;border:1px solid rgba(63,208,255,.35)}
+.tap-hint{position:absolute;top:8px;right:8px;z-index:2;font-size:11.5px;font-weight:800;padding:5px 10px;border-radius:99px;background:rgba(255,122,217,.2);border:1px solid rgba(255,122,217,.5);color:#ffc4ee;pointer-events:none;animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.45}}
+.stage canvas{touch-action:pan-y}
 
 /* ---------- Lesson ---------- */
 .topbar{display:flex;align-items:center;gap:10px;margin-bottom:12px}
