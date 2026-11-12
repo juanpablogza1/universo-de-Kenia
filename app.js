@@ -81,7 +81,6 @@
           </button>`;
         }).join('')}
       </div>
-      <p class="foot">Hecho con cariño para Kenia</p>`;
     app.querySelectorAll('.lesson-card').forEach(b => b.onclick = () => openLesson(+b.dataset.i));
     scrollTo(0, 0);
   }
